@@ -1,0 +1,7 @@
+DBLP:
+  Nodes:                    2553470
+  Edges:                    14322115
+  Zero Deg Nodes:           0
+  Zero InDeg Nodes:         0
+  Zero OutDeg Nodes:        0
+  NonZero In-Out Deg Nodes: 2553470

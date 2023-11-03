@@ -1,0 +1,18 @@
+amazon:
+  Nodes:                    262111
+  Edges:                    899792
+  Zero Deg Nodes:           0
+  Zero InDeg Nodes:         0
+  Zero OutDeg Nodes:        0
+  NonZero In-Out Deg Nodes: 262111
+  Unique directed edges:    1799584
+  Unique undirected edges:  899792
+  Self Edges:               0
+  BiDir Edges:              1799584
+  Closed triangles:         717719
+  Open triangles:           6967193
+  Frac. of closed triads:   0.093393
+  Connected component size: 1.000000
+  Strong conn. comp. size:  1.000000
+  Approx. full diameter:    29
+  90% effective diameter:  10.792217
