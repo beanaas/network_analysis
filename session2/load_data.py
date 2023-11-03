@@ -3,7 +3,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg
 from matplotlib import pyplot as plt
 
-filename = "verification"
+filename = "frena297"
 nr_users = 2000
 nr_movies = 1500
 
@@ -25,3 +25,4 @@ def getA(data):
 
 training_data = load_data(filename+'.training')
 test_data = load_data(filename+'.test')
+print(test_data)
