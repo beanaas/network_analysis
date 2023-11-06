@@ -3,7 +3,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg
 from matplotlib import pyplot as plt
 
-filename = "frena297"
+filename = "verification"
 nr_users = 2000
 nr_movies = 1500
 
@@ -18,7 +18,6 @@ def getA(data):
     c = np.concatenate((data[:,0], data[:,1]+nr_users))
     d = np.ones((2*nr_ratings,))
     A = sp.csr_matrix((d,(r,c)),shape=(nr_ratings,nr_users+nr_movies))
-
     return A
 
 def getR(data):
@@ -26,36 +25,12 @@ def getR(data):
     m = data[:,1]
     r = data[:,2]
     R = sp.csr_matrix((r,(u,m)),shape=(nr_users,nr_movies))
-
     return R
 
-def getRHAT(pairs, r_average, bu, bm):
-    rhat = np.zeros((nr_users, nr_movies))
-
-    for user, movie in pairs:
-        val = (r_average+bu[user]+bm[movie]).round(3)
-        if(val>5):
-            val = 5
-        elif(val<1):
-            val = 1
-        rhat[user][movie] = val
-    return rhat
-
-def train(training_data, r_average):
-    training_data = load_data(filename+'.training')
-    test_data = load_data(filename+'.test')
-    u = training_data[:,0]
-    m = training_data[:,1]
-    r = training_data[:,2]
-    r_average = r.sum()/r.size
-    rmatrix = getR(training_data).toarray()
-    A = getA(training_data)
-    c = r-r_average
-    At = A.transpose()
-    b = np.linalg.lstsq((At@A).toarray(), At@c)[0]
-    bu = b[:nr_users]
-    bm = b[nr_users:]
-    return bu, bm
+def show_histogram(abs_errors):
+    plt.title('ABS errors train')
+    plt.hist(abs_errors, bins=[0,1,2,3,4,5])
+    plt.show()
 
 def getRMSE(pairs,rmatrix, rhat):
     C = len(pairs)
@@ -63,45 +38,84 @@ def getRMSE(pairs,rmatrix, rhat):
     abs_errors = []
     for user, movie in pairs:
         tmp.append(((rmatrix[user][movie]-rhat[user][movie])**2)/C)
-        abs_error = (rmatrix[user][movie]-rhat[user][movie].round(0))
-
+        abs_error = int(abs((rmatrix[user][movie]-rhat[user][movie].round(0))))
+ 
         abs_errors.append(abs_error)
-    
     RMSE = sum(tmp)**(1/2)
     return RMSE, abs_errors
 
-def predictTest(bu, bm):
-    test_data = load_data(filename+'.test')
-    u = test_data[:,0]
-    m = test_data[:,1]
-    r = test_data[:,2]
-    r_average = r.sum()/r.size
-    rmatrix = getR(test_data).toarray()
-    pairs = list(zip(u,m))
-    rhat = getRHAT(pairs, r_average, bu, bm)
-    RMSE, abs_errors = getRMSE(pairs, rmatrix, rhat)
-    print("RMSE: ", RMSE)
-    plt.title('ABS errors')
-    plt.hist(abs_errors, bins = [1,2,3,4,5])
-    plt.show()
+class BaseLinePredictor:
+    def __init__(self):
+        self.training_data = load_data(filename+'.training')
+        self.test_data = load_data(filename+'.test')
+        self.bm = None
+        self.bu = None
+        self.train_RMSE = None
+        self.train_abs_errors = None
+        self.test_RMSE = None
+        self.test_abs_errors = None
+        self.train_rhat = None
+        self.test_rhat = None
+    
+    def predict(self, r_average, pairs):
+        rhat = np.zeros((nr_users, nr_movies))
+        for user, movie in pairs:
+            val = (r_average+self.bu[user]+self.bm[movie]).round(3)
+            if(val>5):
+                val = 5
+            elif(val<1):
+                val = 1
+            rhat[user][movie] = val
+        return rhat
+    
+    def test(self):
+        u = self.test_data[:,0]
+        m = self.test_data[:,1]
+        r = self.test_data[:,2]
+        r_average = r.sum()/r.size
+        rmatrix = getR(self.test_data).toarray()
+        pairs = list(zip(u,m))
+        self.test_rhat = self.predict(r_average, pairs)
+        self.test_RMSE, self.test_abs_errors = getRMSE(pairs, rmatrix, self.test_rhat)
 
+    def train(self):
+        u = self.training_data[:,0]
+        m = self.training_data[:,1]
+        r = self.training_data[:,2]
 
+        pairs = list(zip(u,m))
+        r_average = r.sum()/r.size
+        rmatrix = getR(self.training_data).toarray()
+
+        A = getA(self.training_data)
+        c = r-r_average
+        At = A.transpose()
+        b = np.linalg.lstsq((At@A).toarray(), At@c)[0]
+        self.bu = b[:nr_users]
+        self.bm = b[nr_users:]
+
+        self.train_rhat = self.predict(r_average, pairs)
+        self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
+        
+    def getRHAT(self, pairs, r_average, bu, bm):
+        rhat = np.zeros((nr_users, nr_movies))
+        for user, movie in pairs:
+            val = (r_average+bu[user]+bm[movie]).round(3)
+            if(val>5):
+                val = 5
+            elif(val<1):
+                val = 1
+            rhat[user][movie] = val
+        return rhat
 
 if __name__ == '__main__':
-    
-    bu, bm = train()
+    BLP = BaseLinePredictor()
 
+    BLP.train()
 
-    predictTest(bu, bm)
+    print("Training RMSE: ", BLP.train_RMSE.round(3))
 
+    BLP.test()
 
-
-
-
-
-
-    
-
-test_data = load_data(filename+'.test')
-
+    print("Test RMSE: ", BLP.test_RMSE.round(3))
 
