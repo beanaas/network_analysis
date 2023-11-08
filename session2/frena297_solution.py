@@ -176,9 +176,42 @@ class NeighborhoodPredictor:
         D = D+D.transpose()
         print(D.toarray())
 
+        ci = []
+        ri =[]
+        LD = []
+
+        for movie1 in range(nr_movies):
+            index = []
+            sim = []
+            colSim = np.absolute(D.getcol(movie1))
+            largestVal = np.argmax(colSim)
+            largestIndex = colSim.argmax()
+
+            colSim[largestIndex] = 0
+
+            secondLargestVal = np.argmax(colSim)
+            secondLargestIndex = colSim.argmax()
+            LD.append([(largestIndex, movie1),(secondLargestIndex, movie2)])
 
 
-        
+        for user, movie in pairs:
+            val = (r_average+self.bu[user]+self.bm[movie]).round(3)
+            dCol = D.getcol(movie)
+            dik = LD[movie]
+            #here
+
+            print(D.ge)
+            if(val>5):
+                val = 5
+            elif(val<1):
+                val = 1
+            ri.append(user)
+            ci.append(movie)
+            data.append(val)
+
+
+
+
     
     
     def test(self):
