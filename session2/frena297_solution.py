@@ -47,6 +47,7 @@ def getRMSE(pairs,rmatrix, rhat):
     RMSE = sum(tmp)**(1/2)
     return RMSE, abs_errors
 
+
 class BaseLinePredictor:
     def __init__(self):
         self.training_data = load_data(filename+'.training')
@@ -113,45 +114,72 @@ class NeighborhoodPredictor:
         self.test_abs_errors = None
         self.train_rhat = None
         self.test_rhat = None
-    
-    def predict(self, r_average, pairs):
-        rhatMatrix = np.zeros((nr_users, nr_movies))
-        rmatrix = getR(self.training_data).toarray()
+        self.tran_rtilde = None
         
-        d = np.zeros((nr_users, nr_movies))
+
+
+    def predict(self, r_average, pairs):
+
+        rmatrix = getR(self.training_data)
+        ci = []
+        ri =[]
+        data = []
         for user, movie in pairs:
-            rhat = (r_average+self.bu[user]+self.bm[movie]).round(3)
-            if(rhat>5):
-                rhat = 5
-            elif(rhat<1):
-                rhat = 1
-            rhatMatrix[user][movie] = rhat
-        d = np.zeros((nr_movies, nr_movies))
+            val = (r_average+self.bu[user]+self.bm[movie]).round(3)
+            if(val>5):
+                val = 5
+            elif(val<1):
+                val = 1
+            ri.append(user)
+            ci.append(movie)
+            data.append(val)
+
+        rhat = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
+
         i = 0
-        rtilde = np.round_((rmatrix-rhatMatrix), decimals = 2)
-        print(rtilde)
-        for i in range(nr_movies):
-            j=0
-            for j in range(nr_movies):
-                numerator = 0
-                den1 = 0
-                den2 = 0
-                for user in range(nr_users):
-                   if(rtilde[user][i] != 0 and rtilde[user][j] != 0):
-                        print(rtilde[user][i]*rtilde[user][j])
-                        numerator += rtilde[user][i]*rtilde[user][j]
-                        den1 += rtilde[user][i]**2
-                        den2 += rtilde[user][j]**2
-                denominator = (den1*den2)**(1/2)
-                dij = numerator/(denominator)
-                d[i][j] = dij
-                j+=1
-            i+=1
-        print(d)
+        rtilde = (rmatrix-rhat).tocsc()
+        colIndex = []
+        rowIndex = []
+        vals = []
+        
+        rowD = []
+        colD = []
+        dataD = []
 
 
-                    
+        for movie1 in range(nr_movies):
+            for movie2 in range(movie1, nr_movies):
+                if(movie1!=movie2):
+                    #gets which users has rated the movies
+                    usersRatedMovie1 = rtilde.indices[rtilde.indptr[movie1]: rtilde.indptr[movie1 + 1]]
+                    usersRatedMovie2 = rtilde.indices[rtilde.indptr[movie2]: rtilde.indptr[movie2 + 1]]
+                    #only interested in movies where there are more than one user
+                    users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
+                    numerator = 0
+                    den1 = 0
+                    den2 = 0
+                    ratings1 = rtilde.getcol(movie1)
+                    ratings2 = rtilde.getcol(movie2)
+                    for user in users:
+                        r1 = ratings1[user].data[0]
+                        r2 = ratings2[user].data[0]
+                        numerator += r1*r2
+                        den1 += r1**2
+                        den2 += r2**2
+                    denominator = (den1*den2)**(1/2)
+                    colD.append(movie1)
+                    rowD.append(movie2)
+                    dij = numerator/(denominator)
+                    dataD.append(dij)
+        
+        D = sp.csr_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
+        D = D+D.transpose()
+        print(D.toarray())
 
+
+
+        
+    
     
     def test(self):
         u = self.test_data[:,0]
@@ -180,6 +208,7 @@ class NeighborhoodPredictor:
         self.bm = b[nr_users:]
 
         self.train_rhat = self.predict(r_average, pairs)
+        self.train_rtile = self.train_rhat 
         self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
         
 
