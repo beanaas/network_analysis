@@ -10,8 +10,8 @@ nr_movies = 1500
 
 #nr_users = 10
 #nr_movies = 5
-u_min = 50
-L = 100
+u_min = 0
+L = 2
 
 def load_data(name):
     data = np.genfromtxt(name,delimiter=',',dtype=int)
@@ -117,12 +117,10 @@ class NeighborhoodPredictor:
         self.test_abs_errors = None
         self.train_rhat = None
         self.test_rhat = None
-        self.tran_rtilde = None
+        self.train_rtilde = None
+        self.D = None
         
-
-
-    def predict(self, r_average, pairs):
-
+    def getD(self, r_average, pairs):
         rmatrix = getR(self.training_data)
         start = datetime.datetime.now()
         ci = []
@@ -156,10 +154,8 @@ class NeighborhoodPredictor:
 
         rhat = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
 
-
-        i = 0
         rtilde = (rmatrix-rhat).tocsc()
-        
+        self.train_rtilde = rtilde
         rowD = []
         colD = []
         dataD = []
@@ -176,48 +172,52 @@ class NeighborhoodPredictor:
         for movie1 in range(nr_movies):
             movie1_props = non_zeros[movie1]
             r1 = movie1_props[1]
-            #usersRatedMovie1 = user_i[movie_i==movie1]
             usersRatedMovie1 = movie1_props[0]
-            for movie2 in range(movie1 + 1 , nr_movies):
+            for movie2 in range(movie1, nr_movies):
                 if(movie1!=movie2):
                     movie2_props = non_zeros[movie2]
                     r2 = movie2_props[1]
                     usersRatedMovie2 = movie2_props[0]
                     users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
-                    if(len(users)>=20):
+                    if(len(users)>=u_min):
                         
                         numerator = r1.transpose().dot(r2)
                         denominator = np.sqrt(np.sum(np.square(r1[users])) * np.sum(np.square(r2[users])))
-                        colD.append(movie1)
-                        rowD.append(movie2)
                         dij = numerator/(denominator)
-                        dataD.append(dij)
+                        if(dij):
+                            colD.append(movie1)
+                            rowD.append(movie2)
+                            
+
+                            dataD.append(dij)
 
         print(datetime.datetime.now()-start)
         D = sp.csc_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
         D = D+D.transpose()
+        
+        diagonal_indices = range(min(D.shape[0], D.shape[1]))
+        D[diagonal_indices, diagonal_indices] = 1
         print("D array")
-        print(D.toarray())
+        print(D.toarray()[:5, :5])
+        self.D = D
 
+    def predict(self, r_average, pairs):
+        
         LD = {}
-
         for movie1 in range(nr_movies):
-            sim_col =D.getcol(movie1).data
+            sim_col =self.D.getcol(movie1).data
             abs_sim_col = np.abs(sim_col)
             sorted_simcol = np.argsort(-abs_sim_col)
             LD[movie1] = sorted_simcol
-
 
         ci = []
         ri =[]
         #index of sorted largest indexes
         data = []
 
-        print("5x5 D: ", D.toarray()[:5, :5])
-
         print("before loop")
         start = datetime.datetime.now()
-        rtilde = rtilde.tocsr()
+        rtilde = self.train_rtilde.tocsr()
         print("last",datetime.datetime.now()-start)
         start = datetime.datetime.now()
 
@@ -229,7 +229,7 @@ class NeighborhoodPredictor:
             sorted_list = LD[movie].data
 
             most_similar_movies_indexes = sorted_list[:L]
-            most_similar_movies_d = D.getcol(movie).data[most_similar_movies_indexes]
+            most_similar_movies_d = self.D.getcol(movie).data[most_similar_movies_indexes]
             #need to cast it toarray for using indexes
             rtilde_uj = rtilde.getrow(user).toarray()[0][most_similar_movies_indexes]
             numerator = most_similar_movies_d.dot(rtilde_uj)
@@ -237,13 +237,14 @@ class NeighborhoodPredictor:
 
             if(denominator!=0):
                 val = val + (numerator/denominator)
+
             if(val>5):
                 val = 5
             elif(val<1):
                 val = 1
             ri.append(user)
             ci.append(movie)
-            data.append(val)
+            data.append(round(val, 2))
 
         print("last",datetime.datetime.now()-start)
 
@@ -251,9 +252,6 @@ class NeighborhoodPredictor:
         print(rhatnew.toarray())
 
         return rhatnew.toarray()
-
-
-    
     
     def test(self):
         u = self.test_data[:,0]
@@ -281,19 +279,31 @@ class NeighborhoodPredictor:
         self.bu = b[:nr_users]
         self.bm = b[nr_users:]
 
+        self.getD(r_average, pairs)
         self.train_rhat = self.predict(r_average, pairs)
-        self.train_rtile = self.train_rhat 
         self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
         
 
 if __name__ == '__main__':
-    BLP = NeighborhoodPredictor()
+    NHP = NeighborhoodPredictor()
+
+    NHP.train()
+
+    print("NHP Training RMSE: ", NHP.train_RMSE.round(3))
+
+    NHP.test()
+
+    print("NHP Test RMSE: ", NHP.test_RMSE.round(3))
+"""
+    BLP = BaseLinePredictor()
 
     BLP.train()
 
-    print("Training RMSE: ", BLP.train_RMSE.round(3))
+    print("BLP Training RMSE: ", BLP.train_RMSE.round(3))
 
     BLP.test()
 
-    print("Test RMSE: ", BLP.test_RMSE.round(3))
+    print("BLP Test RMSE: ", BLP.test_RMSE.round(3))"""
+
+
 
