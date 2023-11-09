@@ -2,6 +2,7 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg
 from matplotlib import pyplot as plt
+import datetime
 
 filename = "verification"
 nr_users = 2000
@@ -10,7 +11,7 @@ nr_movies = 1500
 #nr_users = 10
 #nr_movies = 5
 u_min = 50
-L = 2
+L = 100
 
 def load_data(name):
     data = np.genfromtxt(name,delimiter=',',dtype=int)
@@ -107,7 +108,7 @@ class BaseLinePredictor:
 class NeighborhoodPredictor:
     def __init__(self):
         self.training_data = load_data(filename+'.training')
-        #self.test_data = load_data(filename+'.test')
+        self.test_data = load_data(filename+'.test')
         self.bm = None
         self.bu = None
         self.train_RMSE = None
@@ -123,11 +124,27 @@ class NeighborhoodPredictor:
     def predict(self, r_average, pairs):
 
         rmatrix = getR(self.training_data)
+        start = datetime.datetime.now()
         ci = []
         ri =[]
         data = []
+        #key is user, val is index to all movies rated
+        rated_movies = {}
+        #key is movie, val is index to all users that rated this movie
+        user_rated = {}
         for user, movie in pairs:
-            val = (r_average+self.bu[user]+self.bm[movie]).round(2)
+            val = (r_average+self.bu[user]+self.bm[movie])
+
+            if(user in rated_movies):
+                rated_movies[user].append(movie)
+            else:
+                rated_movies[user] = [movie]
+
+            if(movie in user_rated):
+                user_rated[movie].append(user)
+            else:
+                user_rated[movie] = [movie]
+
             if(val>5):
                 val = 5
             elif(val<1):
@@ -135,8 +152,10 @@ class NeighborhoodPredictor:
             ri.append(user)
             ci.append(movie)
             data.append(val)
+        print("first",datetime.datetime.now()-start)
 
         rhat = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
+
 
         i = 0
         rtilde = (rmatrix-rhat).tocsc()
@@ -146,15 +165,13 @@ class NeighborhoodPredictor:
         dataD = []
 
         print("before loop")
-
-        # Find the non-zero entries in rtilde
-        user_i, movie_i, ratings = sp.find(rtilde)
+        start = datetime.datetime.now()
         
         non_zeros = {}
         for movie1 in range(nr_movies):
             r1 = rtilde.getcol(movie1).toarray().flatten()
             non_zeros[movie1] = (np.nonzero(r1),r1)
-        print("afstre")
+
 
         for movie1 in range(nr_movies):
             movie1_props = non_zeros[movie1]
@@ -165,7 +182,6 @@ class NeighborhoodPredictor:
                 if(movie1!=movie2):
                     movie2_props = non_zeros[movie2]
                     r2 = movie2_props[1]
-                    #usersRatedMovie1 = user_i[movie_i==movie1]
                     usersRatedMovie2 = movie2_props[0]
                     users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
                     if(len(users)>=20):
@@ -176,86 +192,17 @@ class NeighborhoodPredictor:
                         rowD.append(movie2)
                         dij = numerator/(denominator)
                         dataD.append(dij)
-            print(movie1)
 
-
-        
-        """for movie1 in range(nr_movies):
-            r1 = rtilde.getcol(movie1).toarray().flatten()
-            #usersRatedMovie1 = user_i[movie_i==movie1]
-            usersRatedMovie1 = np.nonzero(r1)
-            for movie2 in range(movie1 + 1 , nr_movies):
-                if(movie1!=movie2):
-                    r2 = rtilde.getcol(movie2).toarray().flatten()
-                    #usersRatedMovie2 = user_i[movie_i==movie2]
-                    usersRatedMovie2 = np.nonzero(r2)
-                    users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
-                    if(len(users)>=2000):
-                        
-                        numerator = r1.transpose().dot(r2)
-                        denominator = np.sqrt(np.sum(np.square(r1[users])) * np.sum(np.square(r2[users])))
-                        colD.append(movie1)
-                        rowD.append(movie2)
-                        dij = numerator/(denominator)
-                        dataD.append(dij)
-            print(movie1)"""
-        D = sp.csr_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
+        print(datetime.datetime.now()-start)
+        D = sp.csc_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
         D = D+D.transpose()
         print("D array")
         print(D.toarray())
-                
 
-
-        """user_i, movie_i, ratings = sp.find(rtilde)
-        for movie1 in range(nr_movies):
-            # usersRatedMovie1 = rtilde.indices[rtilde.indptr[movie1]: rtilde.indptr[movie1 + 1]]
-            usersRatedMovie1 = user_i[movie_i==movie1]
-            for movie2 in range(movie1, nr_movies):
-                if(movie1!=movie2):
-                    #gets which users has rated the movies
-                    #usersRatedMovie2 = rtilde.indices[rtilde.indptr[movie2]: rtilde.indptr[movie2 + 1]]
-                    usersRatedMovie2 = user_i[movie_i==movie2]
-                    #only interested in movies where there are more than one user
-                    users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
-                    if(len(users)>= u_min):
-                        ratings1 = ratings[(movie_i == movie1) & np.isin(user_i, users)]
-                        ratings2 = ratings[(movie_i == movie2) & np.isin(user_i, users)]
-                        
-                        numerator = np.sum(ratings1 * ratings2)
-                        den1 = np.sum(ratings1 ** 2)
-                        den2 = np.sum(ratings2 ** 2)
-                        denominator = np.sqrt(den1 * den2)
-                        dij = numerator/(denominator)
-                        dataD.append(dij)
-                        colD.append(movie1)
-                        rowD.append(movie2)
-                        numerator = 0
-                        den1 = 0
-                        den2 = 0
-                        ratings1 = rtilde.getcol(movie1)
-                        ratings2 = rtilde.getcol(movie2)
-                        for user in users:
-                            r1 = ratings1[user].data[0]
-                            r2 = ratings2[user].data[0]
-                            numerator += r1*r2
-                            den1 += r1**2
-                            den2 += r2**2
-                        denominator = (den1*den2)**(1/2)
-                        colD.append(movie1)
-                        rowD.append(movie2)
-                        dij = numerator/(denominator)
-                        dataD.append(dij)
-        
-        D = sp.csr_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
-        D = D+D.transpose()
-        print("after loop")
-        print(D.toarray())"""
-
-        
         LD = {}
 
         for movie1 in range(nr_movies):
-            sim_col =D.getcol(movie1).toarray().flatten()
+            sim_col =D.getcol(movie1).data
             abs_sim_col = np.abs(sim_col)
             sorted_simcol = np.argsort(-abs_sim_col)
             LD[movie1] = sorted_simcol
@@ -266,18 +213,30 @@ class NeighborhoodPredictor:
         #index of sorted largest indexes
         data = []
 
+        print("5x5 D: ", D.toarray()[:5, :5])
+
+        print("before loop")
+        start = datetime.datetime.now()
+        rtilde = rtilde.tocsr()
+        print("last",datetime.datetime.now()-start)
+        start = datetime.datetime.now()
+
         for user, movie in pairs:
-            val = (r_average+self.bu[user]+self.bm[movie]).round(3)
+            val = (r_average+self.bu[user]+self.bm[movie])
             numerator = []
             denominator = []
-            for i in range(L):
-                j = LD[movie].flatten()[i]
-                dij = D.getcol(movie).toarray().flatten()[j]
-                rtildeuj= rtilde.getrow(user).toarray().flatten()[j]
-                numerator.append(dij*rtildeuj)
-                denominator.append(abs(dij))
-            
-            val = val + (sum(numerator)/sum(denominator))
+
+            sorted_list = LD[movie].data
+
+            most_similar_movies_indexes = sorted_list[:L]
+            most_similar_movies_d = D.getcol(movie).data[most_similar_movies_indexes]
+            #need to cast it toarray for using indexes
+            rtilde_uj = rtilde.getrow(user).toarray()[0][most_similar_movies_indexes]
+            numerator = most_similar_movies_d.dot(rtilde_uj)
+            denominator = np.sum(np.abs(most_similar_movies_d))
+
+            if(denominator!=0):
+                val = val + (numerator/denominator)
             if(val>5):
                 val = 5
             elif(val<1):
@@ -286,11 +245,12 @@ class NeighborhoodPredictor:
             ci.append(movie)
             data.append(val)
 
+        print("last",datetime.datetime.now()-start)
+
         rhatnew = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
+        print(rhatnew.toarray())
 
-
-
-
+        return rhatnew.toarray()
 
 
     
@@ -333,7 +293,7 @@ if __name__ == '__main__':
 
     print("Training RMSE: ", BLP.train_RMSE.round(3))
 
-    #BLP.test()
+    BLP.test()
 
-    #print("Test RMSE: ", BLP.test_RMSE.round(3))
+    print("Test RMSE: ", BLP.test_RMSE.round(3))
 
