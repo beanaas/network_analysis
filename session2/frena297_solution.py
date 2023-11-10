@@ -3,7 +3,7 @@ import scipy.sparse as sp
 from matplotlib import pyplot as plt
 import datetime
 
-filename = "task---2"
+filename = "verification"
 nr_users = 2000
 nr_movies = 1500
 
@@ -96,7 +96,7 @@ class BaseLinePredictor:
         A = getA(self.training_data)
         c = r-r_average
         At = A.transpose()
-        b = np.linalg.lstsq((At@A).toarray(), At@c)[0]
+        b = sp.linalg.lsqr((At@A).toarray(), At@c)[0]
         self.bu = b[:nr_users]
         self.bm = b[nr_users:]
 
@@ -163,7 +163,6 @@ class NeighborhoodPredictor:
         colD = []
         dataD = []
 
-        print("before loop")
         start = datetime.datetime.now()
         
         non_zeros = {}
@@ -177,7 +176,7 @@ class NeighborhoodPredictor:
             r1 = movie1_props[1]
             usersRatedMovie1 = movie1_props[0]
             for movie2 in range(movie1, nr_movies):
-                if(movie1!=movie2):
+                #if(movie1!=movie2):
                     movie2_props = non_zeros[movie2]
                     r2 = movie2_props[1]
                     usersRatedMovie2 = movie2_props[0]
@@ -187,7 +186,7 @@ class NeighborhoodPredictor:
                         numerator = r1.transpose().dot(r2)
                         #denominator = np.sqrt(np.sum(np.square(r1[users])) * np.sum(np.square(r2[users])))
                         denominator = np.linalg.norm(r1[users])*np.linalg.norm(r2[users])
-                        dij = numerator/(denominator)
+                        dij = numerator/denominator
                         if(dij):
                             colD.append(movie1)
                             rowD.append(movie2)
@@ -218,7 +217,6 @@ class NeighborhoodPredictor:
         #index of sorted largest indexes
         data = []
 
-        print("before loop")
         start = datetime.datetime.now()
         rtilde = self.train_rtilde.tocsr()
         print("last",datetime.datetime.now()-start)
@@ -240,8 +238,6 @@ class NeighborhoodPredictor:
                     r = rt[user][di]
                     numerator.append(d*r)
                     denominator.append(np.abs(d))
-                    if(user==1 and movie == 1):
-                        print("this should be DBC", di, d, r)
                     
 
             denominator = np.sum(denominator)
@@ -266,7 +262,7 @@ class NeighborhoodPredictor:
                 val = 1
             ri.append(user)
             ci.append(movie)
-            data.append(round(val, 2))
+            data.append(val)
 
         print("last",datetime.datetime.now()-start)
 
@@ -298,7 +294,7 @@ class NeighborhoodPredictor:
         A = getA(self.training_data)
         c = r-r_average
         At = A.transpose()
-        b = np.linalg.lstsq((At@A).toarray(), At@c)[0]
+        b = sp.linalg.lsqr(At@A, At@c)[0]
         self.bu = b[:nr_users]
         self.bm = b[nr_users:]
 
@@ -306,65 +302,18 @@ class NeighborhoodPredictor:
         self.train_rhat = self.predict(r_average, pairs)
         self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
         
-import threading
-
-def train_and_test(u, l):
-    global u_min
-    global L
-    print("started")
-    start1 = datetime.datetime.now()
-    NHP = NeighborhoodPredictor()
-    u_min = u
-    L = l
-    NHP.train()
-    print(f"Thread {threading.current_thread().name}: NHP Training RMSE: {NHP.train_RMSE.round(3)}")
-
-    NHP.test()
-
-    print(f"Thread {threading.current_thread().name}: NHP Test RMSE: {NHP.test_RMSE.round(3)}")
-    if NHP.test_RMSE.round(3) < 0.89207:
-        print(f"Thread {threading.current_thread().name}: ##########found one: {u}, {l}")
-    print(f"Thread {threading.current_thread().name}: time: {datetime.datetime.now()-start1}")
-
 if __name__ == '__main__':
 
     
     global u_min
     global L
 
-    #working L = [200], u_min = [40]
-
-    list_of_Ls = [95, 100, 105]
-    list_of_us = [30, 35, 40, 43]
-
-
-    list_of_Ls = [20, 40, 80, 120, 160, 200]
-    list_of_us = [20, 30 ,50, 70 ,80, 100]
-    list_of_Ls = [80, 120, 160, 200]
-    list_of_us = [40, 45, 50, 55]
-    list_of_Ls = [200]
-    list_of_us = [30]
+    u_min = 20
+    L = 200
     start = datetime.datetime.now()
-    for l in list_of_Ls:
-        L = l
-        for u in list_of_us:
-            start1 = datetime.datetime.now()
-            NHP = NeighborhoodPredictor()
-            u_min = u
-            NHP.train()
-            print("NHP Training RMSE: ", NHP.train_RMSE.round(3))
-
-            NHP.test()
-
-            print("NHP Test RMSE: ", NHP.test_RMSE.round(3))
-            if(NHP.test_RMSE.round(3)<0.89207):
-                print("##########found one: ", u, l)
-            print("time: ", datetime.datetime.now()-start1)
-    print("tot time: ", datetime.datetime.now()-start)
-
-
-    """start = datetime.datetime.now()
+    """    """
     
+    NHP = NeighborhoodPredictor()
 
     NHP.train()
 
@@ -374,7 +323,6 @@ if __name__ == '__main__':
 
     print("NHP Test RMSE: ", NHP.test_RMSE.round(3))
     
-
     BLP = BaseLinePredictor()
 
     BLP.train()
@@ -382,10 +330,9 @@ if __name__ == '__main__':
     print("BLP Training RMSE: ", BLP.train_RMSE.round(3))
 
     BLP.test()
-    
 
     print("BLP Test RMSE: ", BLP.test_RMSE.round(3))
-    print("tot time: ", datetime.datetime.now()-start)"""
+    print("tot time: ", datetime.datetime.now()-start)
     
 
 
