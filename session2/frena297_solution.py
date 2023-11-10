@@ -3,14 +3,14 @@ import scipy.sparse as sp
 from matplotlib import pyplot as plt
 import datetime
 
-filename = "albintest"
+filename = "task---2"
 nr_users = 2000
 nr_movies = 1500
 
-nr_users = 10
-nr_movies = 5
-u_min = 0
-L = 2
+#nr_users = 10
+#nr_movies = 5
+u_min = 50
+L = 100
 
 def load_data(name):
     data = np.genfromtxt(name,delimiter=',',dtype=int)
@@ -107,7 +107,7 @@ class BaseLinePredictor:
 class NeighborhoodPredictor:
     def __init__(self):
         self.training_data = load_data(filename+'.training')
-        #self.test_data = load_data(filename+'.test')
+        self.test_data = load_data(filename+'.test')
         self.bm = None
         self.bu = None
         self.train_RMSE = None
@@ -208,9 +208,9 @@ class NeighborhoodPredictor:
         
         LD = {}
         for movie1 in range(nr_movies):
-            sim_col =self.D.getcol(movie1).data
+            sim_col =self.D.getcol(movie1).toarray().flatten()
             abs_sim_col = np.abs(sim_col)
-            sorted_simcol = np.argsort(-abs_sim_col)
+            sorted_simcol = np.argsort(abs_sim_col)[-L:][::-1]
             LD[movie1] = sorted_simcol
 
         ci = []
@@ -231,31 +231,30 @@ class NeighborhoodPredictor:
             numerator = []
             denominator = []
 
-            sorted_list = LD[movie].data
+            sorted_list = LD[movie]
             numerator = []
             denominator = []
-            for i in sorted_list[:L]:
-                di = sorted_list[i]
+            for di in sorted_list:
                 if(di in self.rated_movies[user]):
                     d = dm[movie][di]
                     r = rt[user][di]
                     numerator.append(d*r)
                     denominator.append(np.abs(d))
+                    if(user==1 and movie == 1):
+                        print("this should be DBC", di, d, r)
+                    
 
             denominator = np.sum(denominator)
             numerator = np.sum(numerator)
 
-            """most_similar_movies_indexes = sorted_list[:L]
-            new_most_similar_movies_indexes = []
-            for i in most_similar_movies_indexes:
-                new_most_similar_movies_indexes.append(i)
-            new_most_similar_movies_indexes = [x+1 for x in new_most_similar_movies_indexes]
-            most_similar_movies_d = self.D.getcol(movie).data[most_similar_movies_indexes]
+
+
+            """most_similar_movies_d = self.D.getcol(movie).data[sorted_list]
             #need to cast it toarray for using indexes
-            rtilde_uj = rtilde.getrow(user).toarray()[0][most_similar_movies_indexes]
+            rtilde_uj = rtilde.getrow(user).toarray()[0][sorted_list]
             numerator = most_similar_movies_d.dot(rtilde_uj)
-            denominator = np.sum(np.abs(most_similar_movies_d))
-            print(user, movie)"""
+            denominator = np.sum(np.abs(most_similar_movies_d))"""
+            #print(user, movie)
             if(denominator>0):
                 #print("before neighbour: ", val)
                 val = val + (numerator/denominator)
@@ -319,9 +318,9 @@ if __name__ == '__main__':
     NHP.test()
 
     print("NHP Test RMSE: ", NHP.test_RMSE.round(3))
-    print("tot time: ", datetime.datetime.now()-start)
+    
 
-"""    BLP = BaseLinePredictor()
+    BLP = BaseLinePredictor()
 
     BLP.train()
 
@@ -330,7 +329,8 @@ if __name__ == '__main__':
     BLP.test()
     
 
-    print("BLP Test RMSE: ", BLP.test_RMSE.round(3))"""
+    print("BLP Test RMSE: ", BLP.test_RMSE.round(3))
+    print("tot time: ", datetime.datetime.now()-start)
     
 
 
