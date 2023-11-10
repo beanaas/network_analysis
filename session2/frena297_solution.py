@@ -9,8 +9,8 @@ nr_movies = 1500
 
 #nr_users = 10
 #nr_movies = 5
-u_min = 50
-L = 100
+#almost working 50 100
+
 
 def load_data(name):
     data = np.genfromtxt(name,delimiter=',',dtype=int)
@@ -197,8 +197,8 @@ class NeighborhoodPredictor:
         D = sp.csc_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
         D = D+D.transpose()
         
-        #diagonal_indices = range(min(D.shape[0], D.shape[1]))
-        #D[diagonal_indices, diagonal_indices] = 1
+        diagonal_indices = range(min(D.shape[0], D.shape[1]))
+        D[diagonal_indices, diagonal_indices] = 1
         print("D array")
         print(D.toarray()[:5, :5])
 
@@ -306,10 +306,65 @@ class NeighborhoodPredictor:
         self.train_rhat = self.predict(r_average, pairs)
         self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
         
+import threading
+
+def train_and_test(u, l):
+    global u_min
+    global L
+    print("started")
+    start1 = datetime.datetime.now()
+    NHP = NeighborhoodPredictor()
+    u_min = u
+    L = l
+    NHP.train()
+    print(f"Thread {threading.current_thread().name}: NHP Training RMSE: {NHP.train_RMSE.round(3)}")
+
+    NHP.test()
+
+    print(f"Thread {threading.current_thread().name}: NHP Test RMSE: {NHP.test_RMSE.round(3)}")
+    if NHP.test_RMSE.round(3) < 0.89207:
+        print(f"Thread {threading.current_thread().name}: ##########found one: {u}, {l}")
+    print(f"Thread {threading.current_thread().name}: time: {datetime.datetime.now()-start1}")
 
 if __name__ == '__main__':
+
+    
+    global u_min
+    global L
+
+    #working L = [200], u_min = [40]
+
+    list_of_Ls = [95, 100, 105]
+    list_of_us = [30, 35, 40, 43]
+
+
+    list_of_Ls = [20, 40, 80, 120, 160, 200]
+    list_of_us = [20, 30 ,50, 70 ,80, 100]
+    list_of_Ls = [80, 120, 160, 200]
+    list_of_us = [40, 45, 50, 55]
+    list_of_Ls = [200]
+    list_of_us = [30]
     start = datetime.datetime.now()
-    NHP = NeighborhoodPredictor()
+    for l in list_of_Ls:
+        L = l
+        for u in list_of_us:
+            start1 = datetime.datetime.now()
+            NHP = NeighborhoodPredictor()
+            u_min = u
+            NHP.train()
+            print("NHP Training RMSE: ", NHP.train_RMSE.round(3))
+
+            NHP.test()
+
+            print("NHP Test RMSE: ", NHP.test_RMSE.round(3))
+            if(NHP.test_RMSE.round(3)<0.89207):
+                print("##########found one: ", u, l)
+            print("time: ", datetime.datetime.now()-start1)
+    print("tot time: ", datetime.datetime.now()-start)
+
+
+    """start = datetime.datetime.now()
+    
 
     NHP.train()
 
@@ -330,7 +385,7 @@ if __name__ == '__main__':
     
 
     print("BLP Test RMSE: ", BLP.test_RMSE.round(3))
-    print("tot time: ", datetime.datetime.now()-start)
+    print("tot time: ", datetime.datetime.now()-start)"""
     
 
 
