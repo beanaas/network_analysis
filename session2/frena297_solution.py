@@ -120,31 +120,21 @@ class NeighborhoodPredictor:
         self.D = None
         self.rm = None
         self.rated_movies = None
-        
+
     def getD(self, r_average, pairs):
         rmatrix = getR(self.training_data)
         self.rm = rmatrix
-        start = datetime.datetime.now()
         ci = []
         ri =[]
         data = []
         #key is user, val is index to all movies rated
         rated_movies = {}
-        #key is movie, val is index to all users that rated this movie
-        user_rated = {}
         for user, movie in pairs:
             val = (r_average+self.bu[user]+self.bm[movie])
-
             if(user in rated_movies):
                 rated_movies[user].append(movie)
             else:
                 rated_movies[user] = [movie]
-
-            if(movie in user_rated):
-                user_rated[movie].append(user)
-            else:
-                user_rated[movie] = [user]
-
             if(val>5):
                 val = 5
             elif(val<1):
@@ -153,8 +143,6 @@ class NeighborhoodPredictor:
             ci.append(movie)
             data.append(val)
         self.rated_movies = rated_movies
-        print("first",datetime.datetime.now()-start)
-
         rhat = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
 
         rtilde = (rmatrix-rhat).tocsc()
@@ -162,35 +150,28 @@ class NeighborhoodPredictor:
         rowD = []
         colD = []
         dataD = []
-
-        start = datetime.datetime.now()
         
         non_zeros = {}
         for movie1 in range(nr_movies):
             r1 = rtilde.getcol(movie1).toarray().flatten()
             non_zeros[movie1] = (np.nonzero(r1),r1)
 
-
         for movie1 in range(nr_movies):
             movie1_props = non_zeros[movie1]
             r1 = movie1_props[1]
             usersRatedMovie1 = movie1_props[0]
-            for movie2 in range(movie1, nr_movies):
-                #if(movie1!=movie2):
-                    movie2_props = non_zeros[movie2]
-                    r2 = movie2_props[1]
-                    usersRatedMovie2 = movie2_props[0]
-                    users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
-                    if(len(users)>=u_min):
-                        
-                        numerator = r1.transpose().dot(r2)
-                        #denominator = np.sqrt(np.sum(np.square(r1[users])) * np.sum(np.square(r2[users])))
-                        denominator = np.linalg.norm(r1[users])*np.linalg.norm(r2[users])
-                        dij = numerator/denominator
-                        if(dij):
-                            colD.append(movie1)
-                            rowD.append(movie2)
-                            dataD.append(dij)
+            for movie2 in range(movie1+1, nr_movies):
+                movie2_props = non_zeros[movie2]
+                r2 = movie2_props[1]
+                usersRatedMovie2 = movie2_props[0]
+                users = np.intersect1d(usersRatedMovie1,usersRatedMovie2)
+                if(len(users)>=u_min):
+                    numerator = r1.transpose().dot(r2)
+                    denominator = np.linalg.norm(r1[users])*np.linalg.norm(r2[users])
+                    dij = numerator/denominator if denominator!=0 else 0
+                    colD.append(movie1)
+                    rowD.append(movie2)
+                    dataD.append(dij)
 
         print(datetime.datetime.now()-start)
         D = sp.csc_matrix((dataD,(rowD,colD)),shape=(nr_movies,nr_movies))
@@ -243,19 +224,8 @@ class NeighborhoodPredictor:
             denominator = np.sum(denominator)
             numerator = np.sum(numerator)
 
-
-
-            """most_similar_movies_d = self.D.getcol(movie).data[sorted_list]
-            #need to cast it toarray for using indexes
-            rtilde_uj = rtilde.getrow(user).toarray()[0][sorted_list]
-            numerator = most_similar_movies_d.dot(rtilde_uj)
-            denominator = np.sum(np.abs(most_similar_movies_d))"""
-            #print(user, movie)
             if(denominator>0):
-                #print("before neighbour: ", val)
                 val = val + (numerator/denominator)
-                #print("after neighbour: ", val)
-                #print("real: ", self.rm.toarray()[user][movie])
             if(val>5):
                 val = 5
             elif(val<1):
@@ -267,9 +237,6 @@ class NeighborhoodPredictor:
         print("last",datetime.datetime.now()-start)
 
         rhatnew = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
-        print(rhatnew.toarray())
-        print("DONE rhatnew")
-
         return rhatnew.toarray()
     
     def test(self):
@@ -311,7 +278,6 @@ if __name__ == '__main__':
     u_min = 20
     L = 200
     start = datetime.datetime.now()
-    """    """
     
     NHP = NeighborhoodPredictor()
 
