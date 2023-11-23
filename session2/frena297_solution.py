@@ -7,9 +7,6 @@ filename = "verification"
 nr_users = 2000
 nr_movies = 1500
 
-#nr_users = 10
-#nr_movies = 5
-#almost working 50 100
 
 
 def load_data(name):
@@ -143,9 +140,9 @@ class NeighborhoodPredictor:
             ci.append(movie)
             data.append(val)
         self.rated_movies = rated_movies
-        rhat = sp.csr_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
+        rhat = sp.csc_matrix((data,(ri,ci)),shape=(nr_users,nr_movies))
 
-        rtilde = (rmatrix-rhat).tocsc()
+        rtilde = (rmatrix-rhat)
         self.train_rtilde = rtilde
         rowD = []
         colD = []
@@ -266,8 +263,8 @@ class NeighborhoodPredictor:
         self.bm = b[nr_users:]
 
         self.getD(r_average, pairs)
-        self.train_rhat = self.predict(r_average, pairs)
-        self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
+        #self.train_rhat = self.predict(r_average, pairs)
+        #self.train_RMSE, self.train_abs_errors = getRMSE(pairs, rmatrix, self.train_rhat)
         
 if __name__ == '__main__':
 
@@ -283,22 +280,6 @@ if __name__ == '__main__':
 
     NHP.train()
 
-    print("NHP Training RMSE: ", NHP.train_RMSE.round(3))
-
-    NHP.test()
-
-    print("NHP Test RMSE: ", NHP.test_RMSE.round(3))
-    
-    BLP = BaseLinePredictor()
-
-    BLP.train()
-
-    print("BLP Training RMSE: ", BLP.train_RMSE.round(3))
-
-    BLP.test()
-
-    print("BLP Test RMSE: ", BLP.test_RMSE.round(3))
-    print("tot time: ", datetime.datetime.now()-start)
     
 
 
