@@ -258,7 +258,7 @@ class NeighborhoodPredictor:
         A = getA(self.training_data)
         c = r-r_average
         At = A.transpose()
-        b = sp.linalg.lsqr(At@A, At@c)[0]
+        b = sp.linalg.lsqr(A, c)[0]
         self.bu = b[:nr_users]
         self.bm = b[nr_users:]
 
