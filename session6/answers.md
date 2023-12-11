@@ -3,11 +3,21 @@ Clustering for each node,
 
 The degree distribution of a network tells us the probability that a randomly chosen node will have degree k. A scale free network will have a almost straight line since it is log. Scale-free networks are a type of network characterized by the presence of large hubs. A scale-free network is one with a power-law degree distribution.
 
-Network 3 and 7 are most likely scale free network. Network 3 has power-law exponent around 1.7 and network 7 around 3.
+N1: nodes with high degrees have a tendency to get lower clustering coefficients indicating that they act as bridges between different neighborhoods. Average node degree around 10. Erdös-Renyi networks since they follow the poisson distributions.
 
-Network 1 and 2 are Erdös-Renyi networks since they follow the poisson distributions.
+N2: Very similar to N2.
 
-The other networks seems to be just regular networks
+N3: Most likely scale free network, few are highly connected follows the power law curve. Linear in loglog. exonent around 1
+
+N4: Star network, one node has 499 degree and the rest only have one.
+
+N5: All nodes have the same degrees 7. 500 nodes, very hard to tell what type of graph it is. Not scale free or ER
+
+N6: A complete graph, all nodes are connected to each other
+
+N7: Most likely scale free network, few are highly connected follows the power law curve. Linear in loglog. exponent less than 1
+
+N8: Degree distribution is similar to N2 but doesnt have as many different amount degrees. ER
 
 ## TASK2
 
