@@ -28,12 +28,14 @@ X=data.to_numpy()
 N1=0
 N2=800
 #Y=np.delete(X,range(50,500),0)
+#selets subset of the data, from row N1 to row N2
 Y=X[N1:N2,:]
 plt.spy(Y)
 plt.show()
 N=Y.shape[0]
 print(N)
 
+#Computes the full covariance matrix
 cov_full=np.dot(Y,np.transpose(Y))
 print(np.linalg.cond(cov_full))
 

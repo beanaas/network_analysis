@@ -10,6 +10,7 @@ import sys
 import snap
 from random import randint
 
+#self explanatory
 def getsign(n1,n2):    
     p=0
     n=0
@@ -27,6 +28,9 @@ Gn = snap.TUNGraph.New() # negative edges
 f = open('/courses/TSKS33/ht2023/data/soc-sign-epinions.txt')
 i=1
 Nneglected=0
+#reading each line in the text file, skips #
+#the lines has three different cols, node1, node2 and the sign
+#adds the nodes that have not been added yet
 for line in f:
         s = line
         if not s[0]=='#':
@@ -42,11 +46,13 @@ for line in f:
                  Gp.AddNode(n2)
                  Gn.AddNode(n2)
 
+            #check if self loop
             if (n1==n2):
                 continue
             
             sign = int(x[2])
 
+            #check if the edge already exists
             if G.IsEdge(n1,n2):
                 if Gp.IsEdge(n1,n2) and (sign==-1):
                     # print n1, n2, "already exists with different sign"
@@ -81,18 +87,22 @@ print ("number of inconsistent edges:", Nneglected)
 for i in range(1,500):
     n1 = G.GetRndNId() # random node
     n1i = G.GetNI(n1)
+    #check if nodehas atleast 2 neighbors
     if n1i.GetDeg()>=2:
         d = n1i.GetDeg()
         i1 = randint(0,d-1)
+        #Randomly selects two distinct neighbors
         while 1==1:
             i2 = randint(0,d-1)
             if not i1==i2:
                 break
         n2 = n1i.GetNbrNId(i1)
         n3 = n1i.GetNbrNId(i2)
+
         if not G.IsEdge(n2,n3):
             continue
         
+        #gets sign between all nodes
         s12 = getsign(n1,n2)
         s13 = getsign(n1,n3)        
         s23 = getsign(n2,n3)
@@ -105,9 +115,10 @@ for i in range(1,500):
         if (s12*s13*s23==0):
             print ("The triangle", n1, n2, n3, " contains at least one inconsistent edge, ignoring it.")
             continue
-        
+        # either all 1s or two -1 and one 1
         if (s12*s13*s23==1):
             print ("The triangle", n1, n2, n3, "is strongly balanced.")
+        #negative
         else:
             print ("The triangle", n1, n2, n3, "is unbalanced.")
     

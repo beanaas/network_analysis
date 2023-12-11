@@ -30,19 +30,25 @@ partys={} # senate party membership
 # Read and parse the voting data
 N = 0
 X = np.zeros([0,0],dtype=int)  # array with votes
+#loop over all 699 resolutions
 for i in range(0,699):
+    #reads the resolution
     data=pd.read_pickle('/courses/TSKS33/ht2023/data/US-congress-votes/vote-116-2019-H'+str(i)) 
+    #remove unnecessary data
     data.drop(columns=['state','district'],inplace=True)
     votes = data.to_numpy()
         
     X=np.append(X,np.zeros([N,1],dtype=int),axis=1)
 
     # parse the database
+    #iterates over all the votes
     for j in range(votes.shape[0]):
+        #senator id
         pid = votes[j,0]
         if pid in PID:
             n=PID[pid]
         else:
+            #add 
             n=N
             PID[pid]=n
             NAMES[n]=votes[j,2]
@@ -74,7 +80,7 @@ Z=np.cov(Y,bias=1)  + 1/3.0 * np.eye(N)
 #Z=np.dot(Y,np.transpose(Y))/N  + 1/3.0 * np.eye(N)
 
 # Run graphical Lasso on sample covariance matrix Z
-covariance, precision =graphical_lasso(Z,alpha=.12,max_iter=100)
+covariance, precision =graphical_lasso(Z,alpha=.2,max_iter=100)
 #print(np.around(precision, decimals=3)) 
 
 # Color the nodes according to ground truth (republican/democrat)
